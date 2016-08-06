@@ -3,6 +3,9 @@
 #include <fstream>
 #include <chrono>
 
+using namespace std;
+using namespace cv;
+
 const int DirectionEstimator::POINT_SIZE = 5;
 const Scalar DirectionEstimator::SCALAR_RED(0, 0, 255);
 const Scalar DirectionEstimator::SCALAR_GREEN(0, 255, 0);
@@ -15,15 +18,23 @@ const Scalar DirectionEstimator::SCALAR_WHITE(255, 255, 255);
 const int DirectionEstimator::FLOW_LINE_MIN_LIMIT = 0;
 const int DirectionEstimator::FLOW_LINE_MAX_LIMIT = 100;
 const int DirectionEstimator::FRAME_SPAN = 9;
+const string DirectionEstimator::RESULT_PATH = ".\\result\\";
+const int DirectionEstimator::ERROR_VP = -999;
+const int DirectionEstimator::IMG_WIDTH = 640;
+const int DirectionEstimator::IMG_HEIGHT = 480;
 
 DirectionEstimator::DirectionEstimator()
 {
+	maFilter = new MovingAverageFilter();
+	waFilter = new WeightedAverageFilter();
 	clear();
 	detector.init();
 }
 
 DirectionEstimator::~DirectionEstimator()
 {
+	delete maFilter;
+	delete waFilter;
 	prevImg.release();
 	grayImg.release();
 	prevGrayImg.release();
@@ -34,6 +45,8 @@ DirectionEstimator::~DirectionEstimator()
 
 void DirectionEstimator::clear()
 {
+	maFilter->clear();
+	waFilter->clear();
 	isFirstFrame = true;
 	isSaveImg = false;
 	count = 1;
@@ -41,12 +54,11 @@ void DirectionEstimator::clear()
 	prevKpts.clear();
 	matchVector.clear();
 	vanishPointVector.clear();
-	// RGBAとGrayのサイズ
-	int width = 640;
-	int height = 480;
-	grayImg = Mat(Size(width, height), CV_8UC1);
-	prevImg = Mat(Size(width, height), CV_8UC4);
-	prevGrayImg = Mat(Size(width, height), CV_8UC1);
+	vanishPointVectorMA.clear();
+	vanishPointVectorWA.clear();
+	grayImg = Mat(Size(IMG_WIDTH, IMG_HEIGHT), CV_8UC1);
+	prevImg = Mat(Size(IMG_WIDTH, IMG_HEIGHT), CV_8UC4);
+	prevGrayImg = Mat(Size(IMG_WIDTH, IMG_HEIGHT), CV_8UC1);
 }
 
 void DirectionEstimator::estimate(const Mat &rgbaImg)
@@ -63,13 +75,23 @@ void DirectionEstimator::estimate(const Mat &rgbaImg)
 	detector.detect(grayImg, currentKpts);
 	detector.describe(grayImg, currentKpts, currentDesc);
 	end = chrono::system_clock::now();
-	double elapsed = chrono::duration_cast<chrono::milliseconds>(end - start).count();
+	long long elapsed = chrono::duration_cast<chrono::milliseconds>(end - start).count();
 	cout << "elapsed time(ms):" << elapsed << endl;
 
 	if (!isFirstFrame) {
 		calcMatchingFlow();
 		Point2f vp = getCrossPoint();
 		vanishPointVector.push_back(vp); // 消失点計算
+		if (vp.x == ERROR_VP && vp.y == ERROR_VP) {
+			vanishPointVectorMA.push_back(vp);
+			vanishPointVectorWA.push_back(vp);
+		}
+		else {
+			Point2f vpMA = Point2f(maFilter->update(vp.x), vp.y);
+			vanishPointVectorMA.push_back(vpMA);
+			Point2f vpWA = Point2f(waFilter->update(vp.x), vp.y);
+			vanishPointVectorWA.push_back(vpWA);
+		}
 		if (isSaveImg) draw(rgbaImg); // 特徴点等の描画
 	}
 
@@ -106,7 +128,7 @@ Point2f DirectionEstimator::getCrossPoint()
 {
 	float X = 320;
 	float Y = 240;
-	int flowNum = matchVector.size();
+	int flowNum = (int)matchVector.size();
 	float a = 0;
 	float b = 0;
 	float p = 0;
@@ -134,7 +156,7 @@ Point2f DirectionEstimator::getCrossPoint()
 	p *= -1;
 	q *= -1;
 	bunbo = (a * d - b * c);
-	if (bunbo == 0) return Point2f(-999, -999);
+	if (bunbo == 0) return Point2f(ERROR_VP, ERROR_VP);
 	X = (d * p - b * q) / bunbo;
 	Y = (a * q - c * p) / bunbo;
 	return Point2f(X, Y);
@@ -150,7 +172,6 @@ float DirectionEstimator::getDistance(const Point2f &pt1, const Point2f &pt2)
 // 描画処理
 void DirectionEstimator::draw(const Mat &rgbaImg)
 {
-	string path = ".\\img\\";
 	Mat out;
 	rgbaImg.copyTo(out);
 	for (int i = 0; i < matchVector.size(); ++i) {
@@ -167,8 +188,10 @@ void DirectionEstimator::draw(const Mat &rgbaImg)
 
 	// 消失点描画
 	circle(out, vanishPointVector.back(), POINT_SIZE * 3, SCALAR_CYAN, -1);
+	circle(out, vanishPointVectorMA.back(), POINT_SIZE * 3, SCALAR_RED, -1);
+	circle(out, vanishPointVectorWA.back(), POINT_SIZE * 3, SCALAR_PURPLE, -1);
 	string countStr = to_string(count);
-	imwrite(path + "matching_" + countStr + ".jpg", out);
+	imwrite(RESULT_PATH + "matching_" + countStr + ".jpg", out);
 }
 
 void DirectionEstimator::drawVanishPointHistory()
@@ -185,29 +208,52 @@ void DirectionEstimator::drawVanishPointHistory()
 	line(out, Point(graphWidthHalf, 0), Point(graphWidthHalf, graphHeight), SCALAR_BLACK, 1); // 軸線
 	for (int i = 1; i < vanishPointVector.size(); i++)
 	{
-		Point p1 = Point((vanishPointVector[i - 1].x - 320) * widthScale + graphWidthHalf, heightSpan * (i - 1));
-		Point p2 = Point((vanishPointVector[i].x - 320) * widthScale + graphWidthHalf, heightSpan * i);
-		if (vanishPointVector[i-1].x == -999 && vanishPointVector[i-1].y == -999) // 一つ前のデータがエラー値
-			line(out, p2, p2, SCALAR_RED, 2);
-		else if (vanishPointVector[i].x != -999 && vanishPointVector[i].y != -999) // 現在のデータがエラー値
-			line(out, p1, p2, SCALAR_RED, 1);
+		drawVPLine(out, vanishPointVector, SCALAR_CYAN, i, widthScale, graphWidthHalf, heightSpan);
+		drawVPLine(out, vanishPointVectorMA, SCALAR_RED, i, widthScale, graphWidthHalf, heightSpan);
+		drawVPLine(out, vanishPointVectorWA, SCALAR_PURPLE, i, widthScale, graphWidthHalf, heightSpan);
 	}
 	imshow("vanish point history x", out);
-	imwrite("vanishPointXHistory.jpg", out);
+	imwrite(RESULT_PATH + "vanish_point_history_x.jpg", out);
 }
 
-void DirectionEstimator::logVanishPointHistory(const string& fileName) {
-	ofstream ofs(fileName);
+void DirectionEstimator::drawVPLine(Mat& out, const vector<Point2f>& vpHistory, const Scalar color, const int i, 
+	const float widthScale, const int graphWidthHalf, const float heightSpan)
+{
+	const int imgWidthHalf = IMG_WIDTH / 2;
+	Point p1 = Point((int)((vpHistory[i - 1].x - imgWidthHalf) * widthScale + graphWidthHalf), (int)(heightSpan * (i - 1)));
+	Point p2 = Point((int)((vpHistory[i].x - imgWidthHalf) * widthScale + graphWidthHalf), (int)(heightSpan * i));
+	if (vpHistory[i - 1].x == ERROR_VP && vpHistory[i - 1].y == ERROR_VP) // 一つ前のデータがエラー値
+		line(out, p2, p2, color, 1);
+	else if (vpHistory[i].x != ERROR_VP && vpHistory[i].y != ERROR_VP) // 現在のデータがエラー値
+		line(out, p1, p2, color, 1);
+}
+
+void DirectionEstimator::logVanishPointHistoryAll(const string& fileName)
+{
+	logVanishPointHistory(fileName, vanishPointVector);
+	logVanishPointHistory("MA_" + fileName, vanishPointVectorMA);
+	logVanishPointHistory("WA_" + fileName, vanishPointVectorWA);
+}
+
+void DirectionEstimator::logVanishPointHistory(const string& fileName, const vector<Point2f>& vpHistory) {
+	ofstream ofs(RESULT_PATH + fileName);
 	ofs << "x,y" << endl;
-	for (int i = 0; i < vanishPointVector.size(); i++)
+	for (int i = 0; i < vpHistory.size(); i++)
 	{
-		ofs << vanishPointVector[i].x << "," << vanishPointVector[i].y << endl;
+		ofs << vpHistory[i].x << "," << vpHistory[i].y << endl;
 	}
 }
 
-void DirectionEstimator::readVanishPointHistory(const string& filePath)
+void DirectionEstimator::readVanishPointHistoryAll(const string& filePath)
 {
-	ifstream ifs(filePath);
+	readVanishPointHistory(filePath, vanishPointVector);
+	readVanishPointHistory("MA_" + filePath, vanishPointVectorMA);
+	readVanishPointHistory("WA_" + filePath, vanishPointVectorWA);
+}
+
+void DirectionEstimator::readVanishPointHistory(const string& filePath, vector<Point2f>& vpHistory)
+{
+	ifstream ifs(RESULT_PATH + filePath);
 	string line;
 	const char delimiter = ',';
 	while (!ifs.eof())
@@ -225,7 +271,7 @@ void DirectionEstimator::readVanishPointHistory(const string& filePath)
 		} catch (const invalid_argument& ia) {
 			continue;
 		}
-		vanishPointVector.push_back(Point2f(x, y));
+		vpHistory.push_back(Point2f(x, y));
 	}
 }
 

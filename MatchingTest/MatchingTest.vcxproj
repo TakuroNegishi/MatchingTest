@@ -21,11 +21,18 @@
   <ItemGroup>
     <ClCompile Include="DirectionEstimator.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="MovingAverageFilter.cpp" />
     <ClCompile Include="PointDetector.cpp" />
+    <ClCompile Include="VanishingPointEstimator.cpp" />
+    <ClCompile Include="WeightedAverageFilter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DirectionEstimator.h" />
+    <ClInclude Include="Filter.h" />
+    <ClInclude Include="MovingAverageFilter.h" />
     <ClInclude Include="PointDetector.h" />
+    <ClInclude Include="VanishingPointEstimator.h" />
+    <ClInclude Include="WeightedAverageFilter.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{2F2C39A6-27B8-4C90-AE73-389828DB0F37}</ProjectGuid>

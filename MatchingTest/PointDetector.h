@@ -1,9 +1,7 @@
-#pragma once
+#ifndef POINT_DETECTOR_H
+#define POINT_DETECTOR_H
 
 #include <opencv2/opencv.hpp>
-
-using namespace cv;
-using namespace std;
 
 class PointDetector
 {
@@ -13,12 +11,13 @@ public:
 
 	void init();
 	void release();
-	void match(const Mat &query, const Mat &train, vector<DMatch> &vmatch) const;
-	void describe(const Mat &img, vector<KeyPoint> &vkpt, Mat &vdesc) const;
-	void detect(const Mat &img, vector<KeyPoint> &vkpt) const;
+	void match(const cv::Mat &query, const cv::Mat &train, std::vector<cv::DMatch> &vmatch) const;
+	void describe(const cv::Mat &img, std::vector<cv::KeyPoint> &vkpt, cv::Mat &vdesc) const;
+	void detect(const cv::Mat &img, std::vector<cv::KeyPoint> &vkpt) const;
 
 private:
-	Ptr<AKAZE> mDetector;
-	Ptr<DescriptorMatcher> mMatcher;
+	cv::Ptr<cv::AKAZE> mDetector;
+	cv::Ptr<cv::DescriptorMatcher> mMatcher;
 };
 
+#endif // POINT_DETECTOR_H

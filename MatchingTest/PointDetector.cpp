@@ -1,5 +1,8 @@
 #include "PointDetector.h"
 
+using namespace cv;
+using namespace std;
+
 PointDetector::PointDetector()
 {
 	init();
@@ -12,7 +15,9 @@ PointDetector::~PointDetector()
 
 void PointDetector::init()
 {
-	mDetector = AKAZE::create();
+	//mDetector = AKAZE::create();
+	// threshold=0.001(default)
+	mDetector = AKAZE::create(5, 0, 3, 0.0005, 4, 4, 1);
 	mMatcher = DescriptorMatcher::create("BruteForce-Hamming");
 }
 

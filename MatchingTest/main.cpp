@@ -28,26 +28,27 @@ vector<string> getFiles(const string& dir_path, const string& filter) {
 }
 
 int main() {
-	//string rootPath = "D:\\Research\\‰@Œ¤‹†\\“Á’¥“_“®‚«\\20160802\\straight_right_curve\\img\\";
-	string rootPath = "D:\\Research\\‰@Œ¤‹†\\“Á’¥“_“®‚«\\20160802\\straight_look_around\\img\\";
+	string rootPath = "D:\\Research\\‰@Œ¤‹†\\“Á’¥“_“®‚«\\20160802\\straight_right_curve\\img\\";
+	//string rootPath = "D:\\Research\\‰@Œ¤‹†\\“Á’¥“_“®‚«\\20160802\\straight_look_around\\img\\";
 
-	DirectionEstimator de;
+	//DirectionEstimator* de = new DirectionEstimator();
 
-	//de.setIsSaveImg(true);
+	//de->setIsSaveImg(true);
 	//vector<string> imgFiles = getFiles(rootPath, "*.jpg");
 	//while (imgFiles.size() > 0) {
 	//	cout << "-> " << imgFiles.size() << endl;
 	//	Mat cameraImg = imread(rootPath + imgFiles.front());
-	//	de.estimate(cameraImg);
+	//	de->estimate(cameraImg);
 	//	imgFiles.erase(imgFiles.begin());
 	//	waitKey(50);
 	//}
-	//de.logVanishPointHistory("vanishPointHistory.txt");
+	//de->logVanishPointHistoryAll("vanishPointHistory.txt");
 
-	de.readVanishPointHistory("vanishPointHistory.txt");
-	de.drawVanishPointHistory();
-	waitKey(0);
-	destroyAllWindows();
+	//de->readVanishPointHistoryAll("vanishPointHistory.txt");
+	//de->drawVanishPointHistory();
+	//waitKey(0);
+	//destroyAllWindows();
 
+	//delete de;
 	return 0;
 }
