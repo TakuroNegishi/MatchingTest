@@ -28,27 +28,32 @@ vector<string> getFiles(const string& dir_path, const string& filter) {
 }
 
 int main() {
-	string rootPath = "D:\\Research\\‰@Œ¤‹†\\“Á’¥“_“®‚«\\20160802\\straight_right_curve\\img\\";
+	//string rootPath = "D:\\Research\\‰@Œ¤‹†\\“Á’¥“_“®‚«\\20160802\\straight_right_curve\\img\\";
 	//string rootPath = "D:\\Research\\‰@Œ¤‹†\\“Á’¥“_“®‚«\\20160802\\straight_look_around\\img\\";
+	//string rootPath = "D:\\Research\\‰@Œ¤‹†\\“Á’¥“_“®‚«\\20160809\\straight_look_around_slow\\img\\";
+	string rootPath = "D:\\Research\\‰@Œ¤‹†\\“Á’¥“_“®‚«\\20160809\\straight_left_curve_slow\\img\\";
+	//string rootPath = "D:\\Research\\‰@Œ¤‹†\\“Á’¥“_“®‚«\\20160809\\curve_test4\\img\\";
+	//string rootPath = "D:\\Research\\‰@Œ¤‹†\\“Á’¥“_“®‚«\\20160825\\straight_left_curve_normal\\img\\";
+	string gyroCsvPath = "D:\\Research\\‰@Œ¤‹†\\“Á’¥“_“®‚«\\20160809\\straight_left_curve_slow\\2016-09-06 01;39;40_gyro.csv";
 
-	//DirectionEstimator* de = new DirectionEstimator();
+	DirectionEstimator* de = new DirectionEstimator();
 
-	//de->setIsSaveImg(true);
-	//vector<string> imgFiles = getFiles(rootPath, "*.jpg");
-	//while (imgFiles.size() > 0) {
-	//	cout << "-> " << imgFiles.size() << endl;
-	//	Mat cameraImg = imread(rootPath + imgFiles.front());
-	//	de->estimate(cameraImg);
-	//	imgFiles.erase(imgFiles.begin());
-	//	waitKey(50);
-	//}
-	//de->logVanishPointHistoryAll("vanishPointHistory.txt");
+	de->setIsSaveImg(true);
+	vector<string> imgFiles = getFiles(rootPath, "*.jpg");
+	while (imgFiles.size() > 0) {
+		cout << "-> " << imgFiles.size() << endl;
+		Mat cameraImg = imread(rootPath + imgFiles.front());
+		de->estimate(cameraImg);
+		imgFiles.erase(imgFiles.begin());
+		waitKey(50);
+	}
+	de->logVPHistory("vanishPointHistory.txt");
 
-	//de->readVanishPointHistoryAll("vanishPointHistory.txt");
-	//de->drawVanishPointHistory();
-	//waitKey(0);
-	//destroyAllWindows();
+	//de->readVPHistory("vanishPointHistory.txt");
+	//de->drawVPHistory();
+	waitKey(0);
+	destroyAllWindows();
 
-	//delete de;
+	delete de;
 	return 0;
 }
