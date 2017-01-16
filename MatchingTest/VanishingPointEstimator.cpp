@@ -7,14 +7,17 @@ using namespace std;
 
 const Scalar VanishingPointEstimator::SCALAR_CYAN(255, 255, 0);
 const Scalar VanishingPointEstimator::SCALAR_RED(0, 0, 255);
-const Scalar VanishingPointEstimator::SCALAR_PURPLE(255, 0, 255);
+const Scalar VanishingPointEstimator::SCALAR_GREEN(0, 255, 0);
 const Scalar VanishingPointEstimator::SCALAR_BLACK(0, 0, 0);
 const Scalar VanishingPointEstimator::SCALAR_WHITE(255, 255, 255);
-const int VanishingPointEstimator::ERROR_VP = -999;
+const int VanishingPointEstimator::ERROR_VP = -9999;
 const int VanishingPointEstimator::VPOINT_SIZE = 10;
 const string VanishingPointEstimator::RESULT_PATH = ".\\result\\";
 const int VanishingPointEstimator::IMG_WIDTH = 640;
 const double VanishingPointEstimator::W_MAX = 0.5;
+const int VanishingPointEstimator::GRAPH_WIDTH = 500;
+const int VanishingPointEstimator::GRAPH_HEIGHT = 700;
+const double VanishingPointEstimator::INF = 100000000;
 
 VanishingPointEstimator::VanishingPointEstimator()
 {
@@ -74,21 +77,21 @@ Point2f VanishingPointEstimator::getCrossPoint(const vector<DMatch>& matchVector
 	float q = 0;
 	float bunbo = 0;
 	for (int i = 0; i < flowNum; ++i) {
-		Point2f p1 = currentKpts[matchVector[i].trainIdx].pt;
-		Point2f p2 = prevKpts[matchVector[i].queryIdx].pt;
+		Point2f pp = prevKpts[matchVector[i].queryIdx].pt;
+		Point2f cp = currentKpts[matchVector[i].trainIdx].pt; 
 
 		// 連立方程式公式 - https://t-sv.sakura.ne.jp/text/num_ana/ren_eq22/ren_eq22.html
-		//		sumX += 2*X * (p1.y - p2.y) * (p1.y - p2.y) + 2*Y * (p2.x - p1.x) * (p1.y - p2.y)
-		//				+ 2 * (p1.x * p2.y - p2.x * p1.y) * (p1.y - p2.y); // = 0 偏微分X
-		//		sumY += 2*Y * (p2.x - p1.x) * (p2.x - p1.x) + 2*X * (p2.x - p1.x) * (p1.y - p2.y)
-		//				+ 2 * (p1.x * p2.y - p2.x * p1.y) * (p2.x - p1.x); // = 0 偏微分Y
+		//		sumX += 2*X * (pp.y - cp.y) * (pp.y - cp.y) + 2*Y * (cp.x - pp.x) * (pp.y - cp.y)
+		//				+ 2 * (pp.x * cp.y - cp.x * pp.y) * (pp.y - cp.y); // = 0 偏微分X
+		//		sumY += 2*Y * (cp.x - pp.x) * (cp.x - pp.x) + 2*X * (cp.x - pp.x) * (pp.y - cp.y)
+		//				+ 2 * (pp.x * cp.y - cp.x * pp.y) * (cp.x - pp.x); // = 0 偏微分Y
 
-		a += (p1.y - p2.y) * (p1.y - p2.y);
-		b += (p2.x - p1.x) * (p1.y - p2.y);
-		p += (p1.x * p2.y - p2.x * p1.y) * (p1.y - p2.y);
-		c += (p2.x - p1.x) * (p1.y - p2.y);
-		d += (p2.x - p1.x) * (p2.x - p1.x);
-		q += (p1.x * p2.y - p2.x * p1.y) * (p2.x - p1.x);
+		a += (pp.y - cp.y) * (pp.y - cp.y);
+		b += (cp.x - pp.x) * (pp.y - cp.y);
+		p += (pp.x * cp.y - cp.x * pp.y) * (pp.y - cp.y);
+		c += (cp.x - pp.x) * (pp.y - cp.y);
+		d += (cp.x - pp.x) * (cp.x - pp.x);
+		q += (pp.x * cp.y - cp.x * pp.y) * (cp.x - pp.x);
 	}
 	p *= -1;
 	q *= -1;
@@ -173,41 +176,36 @@ void VanishingPointEstimator::drawLastVP(Mat &outImg)
 {
 	circle(outImg, pointHistory.back(), VPOINT_SIZE, SCALAR_CYAN, -1);
 	circle(outImg, pointHistoryMA.back(), VPOINT_SIZE, SCALAR_RED, -1);
-	circle(outImg, pointHistoryWA.back(), VPOINT_SIZE, SCALAR_PURPLE, -1);
+	circle(outImg, pointHistoryWA.back(), VPOINT_SIZE, SCALAR_GREEN, -1);
 }
 
 Mat VanishingPointEstimator::getVanishPointHistory()
 {
-	const int graphWidth = 500;
-	const int graphHeight = 700;
-	const int graphWidthHalf = graphWidth / 2;
+	const int graphWidthHalf = GRAPH_WIDTH / 2;
 	const int graphWidthQuarter = graphWidthHalf / 2;
-	const int widthDigMax = 1000; // 片側(プラス)の目盛り最大値
+	const int widthDigMax = 2000; // 片側(プラス)の目盛り最大値
 	const float widthScale = (float)graphWidthHalf / widthDigMax;
-	const float heightSpan = (float)graphHeight / (pointHistory.size() - 1);
+	const float heightSpan = (float)GRAPH_HEIGHT / (pointHistory.size() - 1);
 
-	Mat out(graphHeight, graphWidth, CV_8UC3);
-	rectangle(out, Point(0, 0), Point(graphWidth, graphHeight), SCALAR_WHITE, -1); // 背景描画
-	line(out, Point(graphWidthHalf, 0), Point(graphWidthHalf, graphHeight), SCALAR_BLACK, 1); // 軸線
+	Mat out(GRAPH_HEIGHT, GRAPH_WIDTH, CV_8UC3);
+	rectangle(out, Point(0, 0), Point(GRAPH_WIDTH, GRAPH_HEIGHT), SCALAR_WHITE, -1); // 背景描画
+	line(out, Point(graphWidthHalf, 0), Point(graphWidthHalf, GRAPH_HEIGHT), SCALAR_BLACK, 1); // 軸線
 	const int imgWidthHalf = IMG_WIDTH / 2;
-	// 320px線
-	Point p1 = Point((int)((320) * widthScale + graphWidthHalf), 0);
-	Point p2 = Point((int)((320) * widthScale + graphWidthHalf), graphHeight);
+	// 320px(中心)線
+	Point p1 = Point((int)(imgWidthHalf * widthScale + graphWidthHalf), 0);
+	Point p2 = Point((int)(imgWidthHalf * widthScale + graphWidthHalf), GRAPH_HEIGHT);
 	drawDashedLine(out, p1, p2, SCALAR_BLACK, 1, 40);
-	// 640px線
-	Point pp1 = Point((int)((640) * widthScale + graphWidthHalf), 0);
-	Point pp2 = Point((int)((640) * widthScale + graphWidthHalf), graphHeight);
+	// 640px(右端)線
+	Point pp1 = Point((int)(IMG_WIDTH * widthScale + graphWidthHalf), 0);
+	Point pp2 = Point((int)(IMG_WIDTH * widthScale + graphWidthHalf), GRAPH_HEIGHT);
 	line(out, pp1, pp2, SCALAR_BLACK, 1); // 軸線
 	for (int i = 1; i < pointHistory.size(); i++)
 	{
 		drawVPLine(out, pointHistory, SCALAR_CYAN, i, widthScale, graphWidthHalf, heightSpan);
 		drawVPLine(out, pointHistoryMA, SCALAR_RED, i, widthScale, graphWidthHalf, heightSpan);
-		drawVPLine(out, pointHistoryWA, SCALAR_PURPLE, i, widthScale, graphWidthHalf, heightSpan);
+		drawVPLine(out, pointHistoryWA, SCALAR_GREEN, i, widthScale, graphWidthHalf, heightSpan);
 	}
 	return out;
-
-	//imshow("vanish point history x", out);
-	//imwrite(RESULT_PATH + "vanish_point_history_x.jpg", out);
 }
 
 void VanishingPointEstimator::drawDashedLine(cv::Mat& out, const cv::Point& p1, const cv::Point& p2, const cv::Scalar& color, const int lineWidth, const int interval)
@@ -231,6 +229,7 @@ void VanishingPointEstimator::drawVPLine(Mat& out, const vector<Point2f>& vpHist
 		line(out, p2, p2, color, 1);
 	else if (vpHistory[i].x != ERROR_VP && vpHistory[i].y != ERROR_VP) // 現在のデータがエラー値
 		line(out, p1, p2, color, 1);
+	circle(out, p2, VPOINT_SIZE / 2, color, -1);
 }
 
 void VanishingPointEstimator::logVanishPointHistoryAll(const string& fileName)
@@ -279,4 +278,11 @@ void VanishingPointEstimator::readVanishPointHistory(const string& filePath, vec
 		}
 		vpHistory.push_back(Point2f(x, y));
 	}
+}
+
+void VanishingPointEstimator::addVPHistory(Point2f vp)
+{
+	pointHistory.push_back(vp);
+	pointHistoryMA.push_back(vp);
+	pointHistoryWA.push_back(vp);
 }

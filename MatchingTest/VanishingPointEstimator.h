@@ -18,7 +18,7 @@ private:
 public:
 	static const cv::Scalar SCALAR_CYAN;
 	static const cv::Scalar SCALAR_RED;
-	static const cv::Scalar SCALAR_PURPLE;
+	static const cv::Scalar SCALAR_GREEN;
 	static const cv::Scalar SCALAR_BLACK;
 	static const cv::Scalar SCALAR_WHITE;
 	static const int ERROR_VP;
@@ -26,6 +26,9 @@ public:
 	static const std::string RESULT_PATH;
 	static const int IMG_WIDTH;
 	static const double W_MAX;
+	static const int GRAPH_WIDTH;
+	static const int GRAPH_HEIGHT;
+	static const double INF;
 
 	VanishingPointEstimator();
 	~VanishingPointEstimator();
@@ -43,6 +46,8 @@ public:
 	void logVanishPointHistory(const std::string& fileName, const std::vector<cv::Point2f>& vpHistory);
 	void readVanishPointHistoryAll(const std::string& filePath);
 	void readVanishPointHistory(const std::string& filePath, std::vector<cv::Point2f>& vpHistory);
+	//double getDTWDistance(const std::vector<int>& v, const std::vector<int>& w);
+	void addVPHistory(cv::Point2f vp);
 };
 
 #endif // VANISHING_POINT_ESTIMATOR_H

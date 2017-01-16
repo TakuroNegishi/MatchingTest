@@ -15,6 +15,7 @@ public:
 	void calcMatchingFlow();
 	float getDistance(const cv::Point2f &pt1, const cv::Point2f &pt2);
 	void draw(const cv::Mat &rgbaImg);
+	void drawFromDat(cv::Mat &out, const std::vector<cv::Point2f>& current, const std::vector<cv::Point2f>& prev, const cv::Point2f& vpMA);
 	void logVPHistory(const std::string& fileName);
 	void readVPHistory(const std::string& filePath);
 	void drawVPHistory();
@@ -23,6 +24,7 @@ public:
 private:
 	static const int POINT_SIZE;			// 特徴点の描画半径
 	static const cv::Scalar SCALAR_GREEN;
+	static const cv::Scalar SCALAR_LIGHT_GREEN;
 	static const cv::Scalar SCALAR_BLUE;
 	static const cv::Scalar SCALAR_RED;
 	static const cv::Scalar SCALAR_YELLOW;
@@ -49,6 +51,7 @@ private:
 	std::vector<cv::DMatch> matchVector;
 	std::vector<cv::DMatch> inlierMatches;
 	VanishingPointEstimator* vanishingPointEstimator;
+	cv::VideoWriter writer;
 };
 
 #endif // DIRECTION_ESTIMATOR_H

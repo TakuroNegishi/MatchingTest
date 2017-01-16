@@ -6,7 +6,7 @@
 class MovingAverageFilter : public Filter
 {
 private:
-	const static int WIN_SIZE = 4; // 平均窓サイズ
+	const static int WIN_SIZE = 7; // 平均窓サイズ
 	float data[WIN_SIZE]; // 
 	float total;
 	int pointer;

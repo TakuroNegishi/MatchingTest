@@ -2,7 +2,7 @@
 #include <iostream>
 
 // クラス外でないと値を代入できない
-const float WeightedAverageFilter::FILTER_WEIGHT = 0.1f;
+const float WeightedAverageFilter::FILTER_WEIGHT = 0.3f;
 
 WeightedAverageFilter::WeightedAverageFilter()
 {

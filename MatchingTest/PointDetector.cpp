@@ -16,8 +16,8 @@ PointDetector::~PointDetector()
 void PointDetector::init()
 {
 	//mDetector = AKAZE::create();
-	// threshold=0.001(default)
-	mDetector = AKAZE::create(5, 0, 3, 0.0005, 4, 4, 1);
+	// threshold=0.001(default) // ‘å‚«‚­‚·‚é‚ÆŒŸo‚³‚ê‚È‚­‚È‚é,¬‚³‚­‚·‚é‚ÆŒŸo‚³‚ê‚â‚·‚­‚È‚é
+	mDetector = AKAZE::create(5, 0, 3, 0.0001, 4, 4, 1); // 10”{‚ä‚é‚­
 	mMatcher = DescriptorMatcher::create("BruteForce-Hamming");
 }
 

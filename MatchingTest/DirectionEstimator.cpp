@@ -9,7 +9,9 @@ using namespace std;
 using namespace cv;
 
 const int DirectionEstimator::POINT_SIZE = 5;
+//const int DirectionEstimator::POINT_SIZE = 2;
 const Scalar DirectionEstimator::SCALAR_GREEN(0, 255, 0);
+const Scalar DirectionEstimator::SCALAR_LIGHT_GREEN(144, 238, 144);
 const Scalar DirectionEstimator::SCALAR_BLUE(255, 0, 0);
 const Scalar DirectionEstimator::SCALAR_RED(0, 0, 255);
 const Scalar DirectionEstimator::SCALAR_YELLOW(0, 255, 255);
@@ -17,7 +19,7 @@ const Scalar DirectionEstimator::SCALAR_BLACK(0, 0, 0);
 const Scalar DirectionEstimator::SCALAR_WHITE(255, 255, 255);
 const int DirectionEstimator::FLOW_LINE_MIN_LIMIT = 0;
 const int DirectionEstimator::FLOW_LINE_MAX_LIMIT = 9999;
-const int DirectionEstimator::FRAME_SPAN = 9;
+const int DirectionEstimator::FRAME_SPAN = 1;
 const string DirectionEstimator::RESULT_PATH = ".\\result\\";
 const int DirectionEstimator::IMG_WIDTH = 640;
 const int DirectionEstimator::IMG_HEIGHT = 480;
@@ -53,6 +55,12 @@ void DirectionEstimator::clear()
 	grayImg = Mat(Size(IMG_WIDTH, IMG_HEIGHT), CV_8UC1);
 	prevImg = Mat(Size(IMG_WIDTH, IMG_HEIGHT), CV_8UC4);
 	prevGrayImg = Mat(Size(IMG_WIDTH, IMG_HEIGHT), CV_8UC1);
+	writer = VideoWriter(RESULT_PATH + "output.avi", VideoWriter::fourcc('X', 'V', 'I', 'D'), 2.0f, 
+		Size(IMG_WIDTH + VanishingPointEstimator::GRAPH_WIDTH, VanishingPointEstimator::GRAPH_HEIGHT));
+	if (!writer.isOpened())
+		cout << "video writer >> open failed." << endl;
+	else
+		cout << "video writer >> open successed." << endl;
 }
 
 void DirectionEstimator::estimate(const Mat &rgbaImg)
@@ -149,10 +157,10 @@ void DirectionEstimator::draw(const Mat &rgbaImg)
 
 	// フロー描画
 	for (int i = 0; i < matchVector.size(); ++i) {
-		line(out, prevKpts[matchVector[i].queryIdx].pt, currentKpts[matchVector[i].trainIdx].pt, SCALAR_GREEN, 3);
+		line(out, prevKpts[matchVector[i].queryIdx].pt, currentKpts[matchVector[i].trainIdx].pt, SCALAR_WHITE, 2);
 	}
 	for (int i = 0; i < inlierMatches.size(); ++i) {
-		line(out, prevKpts[inlierMatches[i].queryIdx].pt, currentKpts[inlierMatches[i].trainIdx].pt, SCALAR_RED, 3);
+		line(out, prevKpts[inlierMatches[i].queryIdx].pt, currentKpts[inlierMatches[i].trainIdx].pt, SCALAR_LIGHT_GREEN, 2);
 	}
 
 	// 消失点描画
@@ -169,6 +177,51 @@ void DirectionEstimator::draw(const Mat &rgbaImg)
 	ostringstream oss;
 	oss << setw(4) << setfill('0') << countStr;
 	imwrite(RESULT_PATH + "matching_" + oss.str() + ".jpg", combined);
+	writer << combined;
+}
+
+void DirectionEstimator::drawFromDat(Mat &out, const vector<Point2f>& current, const vector<Point2f>& prev, const Point2f& vpMA)
+{
+	count++;
+	//Mat out2;
+	//out.copyTo(out2);
+	//cvtColor(out2, out, COLOR_BGRA2RGB); // 赤青反転
+	// 特徴点描画
+	int flowNum = prev.size();
+	cout << "flow: " << flowNum << endl;
+	for (int i = 0; i < flowNum; ++i) {
+		//cout << "prev: " << prev[i].x << ", " << prev[i].y << endl;
+		circle(out, prev[i], POINT_SIZE, SCALAR_BLUE, -1);
+	}
+	for (int i = 0; i < flowNum; ++i) {
+		circle(out, current[i], POINT_SIZE, SCALAR_YELLOW, -1);
+	}
+
+	// フロー描画
+	for (int i = 0; i < flowNum; ++i) {
+		line(out, prev[i], current[i], SCALAR_LIGHT_GREEN, 2);
+	}
+
+	// 消失点描画
+	circle(out, vpMA, VanishingPointEstimator::VPOINT_SIZE, SCALAR_RED, -1);
+	//imshow("" + count, out);
+	//waitKey();
+
+	// 消失点履歴グラフ描画
+	vanishingPointEstimator->addVPHistory(vpMA); // 消失点計算
+
+	Mat vpHistory = vanishingPointEstimator->getVanishPointHistory();
+	Mat combined = Mat::zeros(vpHistory.rows, out.cols + vpHistory.cols, CV_8UC3);
+	Mat imageLeft(combined, Rect(0, 0, out.cols, out.rows));
+	Mat imageRight(combined, Rect(out.cols, 0, vpHistory.cols, vpHistory.rows));
+	out.copyTo(imageLeft);
+	vpHistory.copyTo(imageRight);
+
+	string countStr = to_string(count);
+	ostringstream oss;
+	oss << setw(4) << setfill('0') << countStr;
+	imwrite(RESULT_PATH + "matching_" + oss.str() + ".jpg", combined);
+	writer << combined;
 }
 
 void DirectionEstimator::logVPHistory(const string& fileName)
